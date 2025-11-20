@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+// 1. Interface for cUSD (Mento Stablecoin)
+interface IERC20 {
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
+contract BloomCircle {
+    // Configuration
+    address public cUSDAddress = 0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1; // Celo Alfajores cUSD
+    uint256 public contributionAmount; // How much each person pays (e.g., 10 cUSD)
+    uint256 public maxParticipants;    // How many people in the circle (e.g., 5)
+    
+    // State
+    address[] public participants;
+    uint256 public round;
+    address public organizer;
+    
+    // Events to track on frontend
+    event Joined(address indexed participant);
+    event Deposited(address indexed participant, uint256 amount);
+    event RoundPaid(address indexed winner, uint256 amount);
+
+    constructor(uint256 _contributionAmount, uint256 _maxParticipants) {
+        contributionAmount = _contributionAmount; // Input in Wei (18 decimals)
+        maxParticipants = _maxParticipants;
+        organizer = msg.sender;
+        round = 0;
+    }
+
+    // 2. Join the Circle
+    function joinCircle() external {
+        require(participants.length < maxParticipants, "Circle is full");
+        // Check if already joined
+        for(uint i=0; i<participants.length; i++){
+            require(participants[i] != msg.sender, "Already joined");
+        }
+        participants.push(msg.sender);
+        emit Joined(msg.sender);
+    }
+
+    // 3. Deposit Funds (Simulated Round Logic)
+    // In a real app, we would track who paid for *this specific round*.
+    // For MVP/Hackathon, we collect funds and pay out immediately if the pot is full.
+    function deposit() external {
+        IERC20 cUSD = IERC20(cUSDAddress);
+        
+        // Transfer cUSD from user to this contract
+        // User must have called "Approve" on the cUSD contract first!
+        require(cUSD.transferFrom(msg.sender, address(this), contributionAmount), "Transfer failed");
+        
+        emit Deposited(msg.sender, contributionAmount);
+
+        // Check if we have enough money to pay out a round
+        uint256 potBalance = cUSD.balanceOf(address(this));
+        uint256 payoutTarget = contributionAmount * participants.length;
+
+        if (potBalance >= payoutTarget && participants.length > 0) {
+            _payoutRound(payoutTarget);
+        }
+    }
+
+    // Internal function to pay the winner
+    function _payoutRound(uint256 amount) internal {
+        // Simple logic: Round 1 goes to person 1, Round 2 to person 2...
+        address winner = participants[round % participants.length];
+        
+        IERC20(cUSDAddress).transfer(winner, amount);
+        
+        emit RoundPaid(winner, amount);
+        round++;
+    }
+
+    // View function for frontend
+    function getParticipants() external view returns (address[] memory) {
+        return participants;
+    }
+}
