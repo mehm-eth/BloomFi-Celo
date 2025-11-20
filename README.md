@@ -3,7 +3,7 @@
 Project for Celo Proof of Ship (Open Track).
 
 ## Deployment
-- **Network:** Celo Alfajores Testnet
+- **Network:** Celo Sepolia Testnet 
 - **Contract Address:** 0xa7FBc4B8CAE65344821D367698BbF345E15952e0
 - **Stablecoin:** cUSD (Mento)
 
